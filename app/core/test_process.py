@@ -7,12 +7,14 @@ class TestProcess:
         self,
         serial_manager,
         batch_repository,
-        model_repository
+        model_repository,
+        instrument
     ):
 
         self.serial_manager = serial_manager
         self.batch_repository = batch_repository
         self.model_repository = model_repository
+        self.instrument = instrument
 
         self.judgment = Judgment()
 
@@ -100,6 +102,42 @@ class TestProcess:
             ]
         )
 
+    def run_test(self):
+
+        connected = self.instrument.connect()
+
+        if not connected:
+
+            raise RuntimeError(
+                "Instrument gagal terhubung."
+            )
+
+
+        voltage = (
+            self.instrument
+            .read_voltage()
+        )
+
+        current = (
+            self.instrument
+            .read_current()
+        )
+
+
+        result = self.judge_measurement(
+            voltage,
+            current
+        )
+
+
+        self.instrument.disconnect()
+
+
+        return {
+            "voltage": voltage,
+            "current": current,
+            "judgment": result
+        }
 
     def complete_test(self):
 
