@@ -44,7 +44,7 @@ serial_manager = SerialManager()
 # =====================================
 
 instrument = InstrumentSimulator(
-    voltage=22.50,
+    voltage=24.00,
     current=0.150
 )
 
@@ -115,22 +115,27 @@ else:
 
     else:
 
+        print("\nSerial Number sesuai.")
+
+        attempt = test_process.start_test()
+
         print(
-            "\nSerial Number sesuai."
+            "\n=== TEST ==="
         )
 
-
-        # =============================
-        # Run Test
-        # =============================
+        print(
+            "Attempt:",
+            attempt
+        )
 
         result = (
             test_process
             .run_test()
         )
 
-
-        print("\n=== MEASUREMENT ===")
+        print(
+            "\n=== MEASUREMENT ==="
+        )
 
         print(
             "Voltage:",
@@ -144,23 +149,90 @@ else:
             "A"
         )
 
-
-        print("\n=== RESULT ===")
+        print(
+            "\n=== RESULT ==="
+        )
 
         print(
             "Judgment:",
             result["judgment"]
         )
 
+        if result["judgment"] == "OK":
 
-        # =============================
-        # Complete Test
-        # =============================
+            test_process.complete_test()
 
-        test_process.complete_test()
+        else:
 
+            while True:
 
-        print("\nTest selesai.")
+                choice = input(
+                    "\nRETEST atau ACCEPT NG? "
+                ).strip().upper()
+
+                if choice == "RETEST":
+
+                    attempt = (
+                        test_process
+                        .start_test()
+                    )
+
+                    print(
+                        "\n=== RETEST ==="
+                    )
+
+                    print(
+                        "Attempt:",
+                        attempt
+                    )
+
+                    result = (
+                        test_process
+                        .run_test()
+                    )
+
+                    print(
+                        "Voltage:",
+                        result["voltage"],
+                        "V"
+                    )
+
+                    print(
+                        "Current:",
+                        result["current"],
+                        "A"
+                    )
+
+                    print(
+                        "Judgment:",
+                        result["judgment"]
+                    )
+
+                    if result["judgment"] == "OK":
+
+                        test_process.complete_test()
+
+                        break
+
+                elif choice == "ACCEPT NG":
+
+                    print(
+                        "\nNG diterima."
+                    )
+
+                    test_process.complete_test()
+
+                    break
+
+                else:
+
+                    print(
+                        "Pilihan tidak valid."
+                    )
+
+        print(
+            "\nTest selesai."
+        )
 
         print(
             "Expected Serial berikutnya:"

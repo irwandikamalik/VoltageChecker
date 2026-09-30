@@ -21,6 +21,20 @@ class TestProcess:
         self.batch_id = None
         self.model_name = None
 
+        self.attempt_number = 0
+
+
+    def start_test(self):
+
+        self.attempt_number += 1
+
+        return self.attempt_number
+    
+
+    def get_attempt_number(self):
+
+        return self.attempt_number
+
 
     def load_active_batch(self):
 
@@ -147,3 +161,5 @@ class TestProcess:
             self.batch_id,
             self.serial_manager.sequence_number
         )
+
+        self.attempt_number = 0
