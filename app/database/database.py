@@ -45,6 +45,17 @@ class Database:
             )
         """)
 
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS batches (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                batch_code TEXT UNIQUE NOT NULL,
+                model_name TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                current_sequence INTEGER NOT NULL,
+                status TEXT NOT NULL
+            )
+        """)
+
         self.connection.commit()
 
     def close(self):
