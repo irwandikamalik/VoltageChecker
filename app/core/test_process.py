@@ -1,4 +1,7 @@
+from datetime import datetime
+
 from app.core.judgment import Judgment
+from app.logger.production_logger import ProductionLogger
 
 
 class TestProcess:
@@ -8,15 +11,18 @@ class TestProcess:
         serial_manager,
         batch_repository,
         model_repository,
-        instrument
+        instrument,
+        operator_id
     ):
 
         self.serial_manager = serial_manager
         self.batch_repository = batch_repository
         self.model_repository = model_repository
         self.instrument = instrument
+        self.operator_id = operator_id
 
         self.judgment = Judgment()
+        self.logger = ProductionLogger()
 
         self.batch_id = None
         self.model_name = None
@@ -127,31 +133,98 @@ class TestProcess:
             )
 
 
-        voltage = (
-            self.instrument
-            .read_voltage()
+        try:
+
+            voltage = (
+                self.instrument
+                .read_voltage()
+            )
+
+            current = (
+                self.instrument
+                .read_current()
+            )
+
+
+            result = self.judge_measurement(
+                voltage,
+                current
+            )
+
+
+            return {
+                "voltage": voltage,
+                "current": current,
+                "judgment": result
+            }
+
+
+        finally:
+
+            self.instrument.disconnect()
+
+            self.instrument.next_measurement()
+
+
+
+
+    def log_test_result(
+        self,
+        serial_number,
+        voltage,
+        current,
+        judgment
+    ):
+
+        model = self.model_repository.get_model(
+            self.model_name
         )
 
-        current = (
-            self.instrument
-            .read_current()
+        if model is None:
+
+            raise ValueError(
+                "Model tidak ditemukan."
+            )
+
+        now = datetime.now()
+
+        self.logger.log_test(
+
+            model_name=self.model_name,
+
+            serial_number=serial_number,
+
+            attempt=self.attempt_number,
+
+            operator_id=self.operator_id,
+
+            voltage=voltage,
+
+            current=current,
+
+            judgment=judgment,
+
+            voltage_lower=model[
+                "voltage_lower"
+            ],
+
+            voltage_upper=model[
+                "voltage_upper"
+            ],
+
+            current_lower=model[
+                "current_lower"
+            ],
+
+            current_upper=model[
+                "current_upper"
+            ],
+
+            date=now,
+
+            time=now
         )
-
-
-        result = self.judge_measurement(
-            voltage,
-            current
-        )
-
-
-        self.instrument.disconnect()
-
-
-        return {
-            "voltage": voltage,
-            "current": current,
-            "judgment": result
-        }
+    
 
     def complete_test(self):
 

@@ -1,6 +1,8 @@
 from app.database.database import Database
 from app.database.batch_repository import BatchRepository
 from app.database.model_repository import ModelRepository
+from app.database.operator_repository import OperatorRepository
+
 
 from app.core.serial_manager import SerialManager
 from app.core.test_process import TestProcess
@@ -8,6 +10,7 @@ from app.core.test_process import TestProcess
 from app.instrument.instrument_simulator import (
     InstrumentSimulator
 )
+
 
 
 # =====================================
@@ -31,6 +34,9 @@ model_repository = ModelRepository(
     database
 )
 
+operator_repository = OperatorRepository(
+    database
+)
 
 # =====================================
 # Serial Manager
@@ -44,9 +50,45 @@ serial_manager = SerialManager()
 # =====================================
 
 instrument = InstrumentSimulator(
-    voltage=24.00,
-    current=0.150
+    measurements=[
+        {
+            "voltage": 22.00,
+            "current": 0.150
+        },
+        {
+            "voltage": 24.00,
+            "current": 0.150
+        }
+    ],
+    fail_on_read=False
 )
+
+# =====================================
+# Operator
+# =====================================
+
+operator_id = input(
+    "\nOperator ID: "
+).strip()
+
+operator = operator_repository.get_operator(
+    operator_id
+)
+
+if operator is None:
+
+    print(
+        "\nOperator ID tidak terdaftar."
+    )
+
+    exit()
+
+else:
+
+    print(
+        "\nOperator:",
+        operator["name"]
+    )
 
 
 # =====================================
@@ -57,7 +99,8 @@ test_process = TestProcess(
     serial_manager,
     batch_repository,
     model_repository,
-    instrument
+    instrument,
+    operator_id
 )
 
 
@@ -72,172 +115,197 @@ if not loaded:
 
     print("Tidak ada batch aktif.")
 
+    exit()
+
+
+print("=== BATCH ===")
+
+print(
+    "Model:",
+    test_process.model_name
+)
+
+print(
+    "Expected Serial:",
+    test_process.get_expected_serial()
+)
+
+# =================================
+# Serial Number
+# =================================
+
+serial_number = input(
+    "\nScan Serial Number: "
+).strip()
+
+
+# =================================
+# Validate Serial
+# =================================
+
+if not test_process.validate_serial(
+    serial_number
+):
+
+    print("\n=== RESULT ===")
+
+    print("Judgment: NG")
+
+    print(
+        "Serial Number tidak sesuai."
+    )
+
+
 else:
 
-    print("=== BATCH ===")
+    print("\nSerial Number sesuai.")
+
+    attempt = test_process.start_test()
 
     print(
-        "Model:",
-        test_process.model_name
+        "\n=== TEST ==="
     )
 
     print(
-        "Expected Serial:",
-        test_process.get_expected_serial()
+        "Attempt:",
+        attempt
     )
 
-
-    # =================================
-    # Serial Number
-    # =================================
-
-    serial_number = input(
-        "\nScan Serial Number: "
-    ).strip()
-
-
-    # =================================
-    # Validate Serial
-    # =================================
-
-    if not test_process.validate_serial(
-        serial_number
-    ):
-
-        print("\n=== RESULT ===")
-
-        print("Judgment: NG")
-
-        print(
-            "Serial Number tidak sesuai."
-        )
-
-
-    else:
-
-        print("\nSerial Number sesuai.")
-
-        attempt = test_process.start_test()
-
-        print(
-            "\n=== TEST ==="
-        )
-
-        print(
-            "Attempt:",
-            attempt
-        )
-
+    try:
         result = (
             test_process
             .run_test()
         )
 
-        print(
-            "\n=== MEASUREMENT ==="
-        )
+    except RuntimeError as error:
 
         print(
-            "Voltage:",
-            result["voltage"],
-            "V"
+            "\n=== INSTRUMENT ERROR ==="
         )
 
-        print(
-            "Current:",
-            result["current"],
-            "A"
-        )
+        print(error)
 
-        print(
-            "\n=== RESULT ==="
-        )
+        exit()
 
-        print(
-            "Judgment:",
-            result["judgment"]
-        )
+    test_process.log_test_result(
+        serial_number=serial_number,
+        voltage=result["voltage"],
+        current=result["current"],
+        judgment=result["judgment"]
+    )
 
-        if result["judgment"] == "OK":
+    print(
+        "\n=== MEASUREMENT ==="
+    )
 
-            test_process.complete_test()
+    print(
+        "Voltage:",
+        result["voltage"],
+        "V"
+    )
 
-        else:
+    print(
+        "Current:",
+        result["current"],
+        "A"
+    )
 
-            while True:
+    print(
+        "\n=== RESULT ==="
+    )
 
-                choice = input(
-                    "\nRETEST atau ACCEPT NG? "
-                ).strip().upper()
+    print(
+        "Judgment:",
+        result["judgment"]
+    )
 
-                if choice == "RETEST":
+    if result["judgment"] == "OK":
 
-                    attempt = (
-                        test_process
-                        .start_test()
-                    )
+        test_process.complete_test()
 
-                    print(
-                        "\n=== RETEST ==="
-                    )
+    else:
 
-                    print(
-                        "Attempt:",
-                        attempt
-                    )
+        while True:
 
-                    result = (
-                        test_process
-                        .run_test()
-                    )
+            choice = input(
+                "\nRETEST atau ACCEPT NG? "
+            ).strip().upper()
 
-                    print(
-                        "Voltage:",
-                        result["voltage"],
-                        "V"
-                    )
+            if choice == "RETEST":
 
-                    print(
-                        "Current:",
-                        result["current"],
-                        "A"
-                    )
+                attempt = (
+                    test_process
+                    .start_test()
+                )
 
-                    print(
-                        "Judgment:",
-                        result["judgment"]
-                    )
+                print(
+                    "\n=== RETEST ==="
+                )
 
-                    if result["judgment"] == "OK":
+                print(
+                    "Attempt:",
+                    attempt
+                )
 
-                        test_process.complete_test()
+                result = (
+                    test_process
+                    .run_test()
+                )
 
-                        break
+                test_process.log_test_result(
+                    serial_number=serial_number,
+                    voltage=result["voltage"],
+                    current=result["current"],
+                    judgment=result["judgment"]
+                )
 
-                elif choice == "ACCEPT NG":
+                print(
+                    "Voltage:",
+                    result["voltage"],
+                    "V"
+                )
 
-                    print(
-                        "\nNG diterima."
-                    )
+                print(
+                    "Current:",
+                    result["current"],
+                    "A"
+                )
+
+                print(
+                    "Judgment:",
+                    result["judgment"]
+                )
+
+                if result["judgment"] == "OK":
 
                     test_process.complete_test()
 
                     break
 
-                else:
+            elif choice == "ACCEPT NG":
 
-                    print(
-                        "Pilihan tidak valid."
-                    )
+                print(
+                    "\nNG diterima."
+                )
 
-        print(
-            "\nTest selesai."
-        )
+                test_process.complete_test()
 
-        print(
-            "Expected Serial berikutnya:"
-        )
+                break
 
-        print(
-            test_process.get_expected_serial()
-        )
+            else:
+
+                print(
+                    "Pilihan tidak valid."
+                )
+
+    print(
+        "\nTest selesai."
+    )
+
+    print(
+        "Expected Serial berikutnya:"
+    )
+
+    print(
+        test_process.get_expected_serial()
+    )
