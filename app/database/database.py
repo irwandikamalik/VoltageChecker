@@ -45,6 +45,7 @@ class Database:
             )
         """)
 
+        # TABLE BATCH SERIAL
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS batches (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

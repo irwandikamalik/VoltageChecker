@@ -11,7 +11,12 @@ from app.instrument.instrument_simulator import (
     InstrumentSimulator
 )
 
+from app.core.test_state import TestState
+import app.core.test_state
+import app.core.test_process
 
+print("test_state.py:", app.core.test_state.__file__)
+print("test_process.py:", app.core.test_process.__file__)
 
 # =====================================
 # Database
@@ -60,7 +65,7 @@ instrument = InstrumentSimulator(
             "current": 0.150
         }
     ],
-    fail_on_read=False
+    fail_on_read=True
 )
 
 # =====================================
@@ -103,6 +108,17 @@ test_process = TestProcess(
     operator_id
 )
 
+if not test_process.validate_operator():
+
+    print("\nOperator validation error.")
+    exit()
+
+
+print(
+    "State after operator validation:",
+    test_process.get_state()
+)
+
 
 # =====================================
 # Load batch
@@ -110,12 +126,18 @@ test_process = TestProcess(
 
 loaded = test_process.load_active_batch()
 
-
 if not loaded:
 
     print("Tidak ada batch aktif.")
-
     exit()
+
+
+test_process.wait_for_serial()
+
+print(
+    "State after batch:",
+    test_process.get_state()
+)
 
 
 print("=== BATCH ===")
@@ -143,24 +165,27 @@ serial_number = input(
 # Validate Serial
 # =================================
 
-if not test_process.validate_serial(
-    serial_number
-):
+if not test_process.validate_serial(serial_number):
 
     print("\n=== RESULT ===")
-
     print("Judgment: NG")
-
-    print(
-        "Serial Number tidak sesuai."
-    )
-
+    print("Serial Number tidak sesuai.")
 
 else:
 
     print("\nSerial Number sesuai.")
 
+    print(
+        "State after serial validation:",
+        test_process.get_state()
+    )
+
     attempt = test_process.start_test()
+
+    print(
+        "State after start test:",
+        test_process.get_state()
+    )
 
     print(
         "\n=== TEST ==="
@@ -179,13 +204,31 @@ else:
 
     except RuntimeError as error:
 
+        test_process.state_manager.set_state(
+            TestState.ERROR
+        )
+
         print(
             "\n=== INSTRUMENT ERROR ==="
         )
 
         print(error)
 
+        print(
+            "State:",
+            test_process.get_state()
+        )
+
         exit()
+
+    test_process.process_result(
+        result["judgment"]
+    )
+
+    print(
+        "State after result:",
+        test_process.get_state()
+    )
 
     test_process.log_test_result(
         serial_number=serial_number,
@@ -233,6 +276,15 @@ else:
 
             if choice == "RETEST":
 
+                test_process.state_manager.set_state(
+                    TestState.RETEST
+                )
+
+                print(
+                    "State after retest:",
+                    test_process.get_state()
+                )
+
                 attempt = (
                     test_process
                     .start_test()
@@ -250,6 +302,10 @@ else:
                 result = (
                     test_process
                     .run_test()
+                )
+
+                test_process.process_result(
+                    result["judgment"]
                 )
 
                 test_process.log_test_result(
