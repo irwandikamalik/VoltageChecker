@@ -2,13 +2,13 @@ from datetime import datetime
 
 from app.core.judgment import Judgment
 from app.logger.production_logger import ProductionLogger
-from app.core.test_state import (
-    TestState,
-    TestStateManager
+from app.core.state import (
+    ProcessState,
+    StateManager
 )
 
 
-class TestProcess:
+class ProcessController:
 
     def __init__(
         self,
@@ -16,7 +16,8 @@ class TestProcess:
         batch_repository,
         model_repository,
         instrument,
-        operator_id
+        operator_id,
+        logger=None
     ):
 
         self.serial_manager = serial_manager
@@ -26,8 +27,8 @@ class TestProcess:
         self.operator_id = operator_id
 
         self.judgment = Judgment()
-        self.logger = ProductionLogger()
-        self.state_manager = TestStateManager()
+        self.logger = logger or ProductionLogger()
+        self.state_manager = StateManager()
 
 
         self.batch_id = None
@@ -43,13 +44,45 @@ class TestProcess:
     def start_test(self):
 
         self.state_manager.set_state(
-            TestState.TESTING
+            ProcessState.TESTING
         )
 
         self.attempt_number += 1
 
         return self.attempt_number
-    
+
+
+    def retest(self):
+        if self.get_state() != ProcessState.RESULT_NG:
+            raise ValueError(
+                "RETEST hanya dapat dilakukan setelah hasil NG"
+            )
+
+        self.state_manager.set_state(
+            ProcessState.RETEST
+        )
+
+
+    def accept_ng(self):
+        if self.get_state() != ProcessState.RESULT_NG:
+            raise ValueError(
+                "Accept NG hanya dapat dilakukan setelah hasil NG"
+            )
+        self.complete_test()
+
+
+    def handle_error(self):
+        current_state = self.get_state()
+
+        if current_state != ProcessState.TESTING:
+            raise ValueError(
+                "ERROR hanya dapat ditangani saat proses testing"
+            )
+
+        self.state_manager.set_state(
+            ProcessState.ERROR
+        )
+
 
     def get_attempt_number(self):
 
@@ -66,7 +99,7 @@ class TestProcess:
         if batch is None:
 
             self.state_manager.set_state(
-                TestState.ERROR
+                ProcessState.ERROR
             )
 
             return False
@@ -83,7 +116,7 @@ class TestProcess:
         )
 
         self.state_manager.set_state(
-            TestState.BATCH_READY
+            ProcessState.BATCH_READY
         )
 
         return True
@@ -104,13 +137,13 @@ class TestProcess:
         if not operator:
 
             self.state_manager.set_state(
-                TestState.ERROR
+                ProcessState.ERROR
             )
 
             return False
 
         self.state_manager.set_state(
-            TestState.OPERATOR_VALID
+            ProcessState.OPERATOR_VALID
         )
 
         return True
@@ -118,7 +151,7 @@ class TestProcess:
     def wait_for_serial(self):
 
         self.state_manager.set_state(
-            TestState.WAIT_SERIAL
+            ProcessState.WAIT_SERIAL
         )
 
     def validate_serial(self, serial_number):
@@ -131,7 +164,7 @@ class TestProcess:
         if valid:
 
             self.state_manager.set_state(
-                TestState.SERIAL_VALID
+                ProcessState.SERIAL_VALID
             )
 
             return True
@@ -191,16 +224,8 @@ class TestProcess:
 
         try:
 
-            voltage = (
-                self.instrument
-                .read_voltage()
-            )
-
-            current = (
-                self.instrument
-                .read_current()
-            )
-
+            voltage = (self.instrument.read_voltage())
+            current = (self.instrument.read_current())
 
             result = self.judge_measurement(
                 voltage,
@@ -218,10 +243,6 @@ class TestProcess:
         finally:
 
             self.instrument.disconnect()
-
-            self.instrument.next_measurement()
-
-
 
 
     def log_test_result(
@@ -287,26 +308,26 @@ class TestProcess:
         if judgment == "OK":
 
             self.state_manager.set_state(
-                TestState.RESULT_OK
+                ProcessState.RESULT_OK
             )
 
         elif judgment == "NG":
 
             self.state_manager.set_state(
-                TestState.RESULT_NG
+                ProcessState.RESULT_NG
             )
 
         else:
 
             self.state_manager.set_state(
-                TestState.ERROR
+                ProcessState.ERROR
             )
     
 
     def complete_test(self):
 
         self.state_manager.set_state(
-            TestState.COMPLETED
+            ProcessState.COMPLETED
         )
 
         self.serial_manager.next_serial()
@@ -319,7 +340,7 @@ class TestProcess:
         self.attempt_number = 0
 
         self.state_manager.set_state(
-            TestState.WAIT_SERIAL
+            ProcessState.WAIT_SERIAL
         )
 
 

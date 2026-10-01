@@ -3,7 +3,7 @@ from app.database.batch_repository import BatchRepository
 from app.database.model_repository import ModelRepository
 
 from app.core.serial_manager import SerialManager
-from app.core.test_process import TestProcess
+from app.core.process import ProcessController
 
 
 database = Database()
@@ -21,7 +21,7 @@ model_repository = ModelRepository(
 serial_manager = SerialManager()
 
 
-test_process = TestProcess(
+test_process = ProcessController(
     serial_manager,
     batch_repository,
     model_repository

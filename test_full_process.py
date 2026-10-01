@@ -5,18 +5,17 @@ from app.database.operator_repository import OperatorRepository
 
 
 from app.core.serial_manager import SerialManager
-from app.core.test_process import TestProcess
+from app.core.process import ProcessController
 
 from app.instrument.instrument_simulator import (
     InstrumentSimulator
 )
 
-from app.core.test_state import TestState
-import app.core.test_state
-import app.core.test_process
+import app.core.state
+import app.core.process
 
-print("test_state.py:", app.core.test_state.__file__)
-print("test_process.py:", app.core.test_process.__file__)
+print("test_state.py:", app.core.state.__file__)
+print("test_process.py:", app.core.process.__file__)
 
 # =====================================
 # Database
@@ -54,19 +53,7 @@ serial_manager = SerialManager()
 # Instrument
 # =====================================
 
-instrument = InstrumentSimulator(
-    measurements=[
-        {
-            "voltage": 22.00,
-            "current": 0.150
-        },
-        {
-            "voltage": 24.00,
-            "current": 0.150
-        }
-    ],
-    fail_on_read=True
-)
+instrument = InstrumentSimulator()
 
 # =====================================
 # Operator
@@ -100,7 +87,7 @@ else:
 # Test Process
 # =====================================
 
-test_process = TestProcess(
+test_process = ProcessController(
     serial_manager,
     batch_repository,
     model_repository,
@@ -197,28 +184,15 @@ else:
     )
 
     try:
-        result = (
-            test_process
-            .run_test()
-        )
+        result = test_process.run_test()
+        instrument.next_measurement()
 
     except RuntimeError as error:
-
-        test_process.state_manager.set_state(
-            TestState.ERROR
-        )
-
-        print(
-            "\n=== INSTRUMENT ERROR ==="
-        )
-
+        test_process.handle_error()
+        
+        print("\n=== INSTRUMENT ERROR ===")
         print(error)
-
-        print(
-            "State:",
-            test_process.get_state()
-        )
-
+        print("State:",test_process.get_state())
         exit()
 
     test_process.process_result(
@@ -275,38 +249,22 @@ else:
             ).strip().upper()
 
             if choice == "RETEST":
-
-                test_process.state_manager.set_state(
-                    TestState.RETEST
-                )
-
+                test_process.retest()
+                
                 print(
                     "State after retest:",
                     test_process.get_state()
                 )
 
-                attempt = (
-                    test_process
-                    .start_test()
-                )
+                attempt = test_process.start_test()
 
-                print(
-                    "\n=== RETEST ==="
-                )
+                print("\n=== RETEST ===")
+                print("Attempt:", attempt)
 
-                print(
-                    "Attempt:",
-                    attempt
-                )
+                result = test_process.run_test()
+                instrument.next_measurement()
 
-                result = (
-                    test_process
-                    .run_test()
-                )
-
-                test_process.process_result(
-                    result["judgment"]
-                )
+                test_process.process_result(result["judgment"])
 
                 test_process.log_test_result(
                     serial_number=serial_number,
@@ -339,24 +297,19 @@ else:
                     break
 
             elif choice == "ACCEPT NG":
-
+                print("\nNG diterima.")
+                test_process.accept_ng()
                 print(
-                    "\nNG diterima."
+                    "State after complete:",
+                    test_process.get_state()
                 )
-
-                test_process.complete_test()
 
                 break
 
             else:
+                print("Pilihan tidak valid.")
 
-                print(
-                    "Pilihan tidak valid."
-                )
-
-    print(
-        "\nTest selesai."
-    )
+    print("\nTest selesai.")
 
     print(
         "Expected Serial berikutnya:"

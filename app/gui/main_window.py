@@ -17,6 +17,7 @@ from PySide2.QtWidgets import (
 
 from app.database.database import Database
 from app.database.operator_repository import OperatorRepository
+from app.database.model_repository import ModelRepository
 
 
 class MainWindow(QMainWindow):
@@ -31,12 +32,27 @@ class MainWindow(QMainWindow):
             self.database
         )
 
+        self.model_repository = ModelRepository(
+            self.database
+        )
+
         self.operator_valid  = False
 
         self.setWindowTitle("Voltage Checker System")
         self.setMinimumSize(1100, 750)
 
         self.setup_ui()
+        self.load_models()
+
+    def load_models(self):
+
+        models = self.model_repository.get_all_models()
+
+        self.model_combo.clear()
+
+        for model in models:
+            model_name = model[1]
+            self.model_combo.addItem(model_name)
 
     def validateOperator(self):
 

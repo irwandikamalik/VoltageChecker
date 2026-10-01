@@ -1,10 +1,10 @@
-from app.core.test_state import (
-    TestState,
-    TestStateManager
+from app.core.state import (
+    ProcessState,
+    StateManager
 )
 
 
-state_manager = TestStateManager()
+state_manager = StateManager()
 
 
 def show_state():
@@ -22,77 +22,77 @@ show_state()
 
 
 state_manager.set_state(
-    TestState.OPERATOR_VALID
+    ProcessState.OPERATOR_VALID
 )
 
 show_state()
 
 
 state_manager.set_state(
-    TestState.BATCH_READY
+    ProcessState.BATCH_READY
 )
 
 show_state()
 
 
 state_manager.set_state(
-    TestState.WAIT_SERIAL
+    ProcessState.WAIT_SERIAL
 )
 
 show_state()
 
 
 state_manager.set_state(
-    TestState.SERIAL_VALID
+    ProcessState.SERIAL_VALID
 )
 
 show_state()
 
 
 state_manager.set_state(
-    TestState.TESTING
+    ProcessState.TESTING
 )
 
 show_state()
 
 
 state_manager.set_state(
-    TestState.RESULT_NG
+    ProcessState.RESULT_NG
 )
 
 show_state()
 
 
 state_manager.set_state(
-    TestState.RETEST
+    ProcessState.RETEST
 )
 
 show_state()
 
 
 state_manager.set_state(
-    TestState.TESTING
+    ProcessState.TESTING
 )
 
 show_state()
 
 
 state_manager.set_state(
-    TestState.RESULT_OK
+    ProcessState.RESULT_OK
 )
 
 show_state()
 
 
 state_manager.set_state(
-    TestState.COMPLETED
+    ProcessState.COMPLETED
 )
 
 show_state()
 
 
 state_manager.set_state(
-    TestState.WAIT_SERIAL
+    ProcessState.WAIT_SERIAL
 )
 
 show_state()

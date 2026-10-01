@@ -10,6 +10,10 @@ class InstrumentSimulator:
 
             measurements = [
                 {
+                    "voltage": 22.00,
+                    "current": 0.150
+                },
+                {
                     "voltage": 24.00,
                     "current": 0.150
                 }
@@ -52,8 +56,5 @@ class InstrumentSimulator:
 
     def next_measurement(self):
 
-        if self.attempt_index < len(
-            self.measurements
-        ) - 1:
-
+        if self.attempt_index < len(self.measurements) - 1:
             self.attempt_index += 1
