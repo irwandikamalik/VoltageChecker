@@ -1,4 +1,5 @@
 from app.core.process import ProcessController
+from app.core.state import ProcessState
 
 
 class FakeSerialManager:
@@ -487,6 +488,31 @@ def test_accept_ng():
 
     assert process.get_state().value == "WAIT_SERIAL"
 
+def test_accept_ng_increments_sequence_and_resets_attempt():
+
+    process = prepare_testing_process()
+
+    process.process_result("NG")
+
+    assert process.get_state().value == "RESULT_NG"
+    assert process.get_attempt_number() == 1
+
+    process.accept_ng()
+
+    assert process.get_state().value == "WAIT_SERIAL"
+
+    assert (
+        process.serial_manager.sequence_number
+        == 26
+    )
+
+    assert process.batch_repository.updated_sequence == (
+        1,
+        26
+    )
+
+    assert process.get_attempt_number() == 0
+
 def test_accept_ng_invalid_state():
 
     process = prepare_testing_process()
@@ -945,3 +971,310 @@ def test_full_production_flow_ng_retest_ok():
     # =========================
 
     assert process.get_attempt_number() == 0
+
+def test_run_test_connection_failed_does_not_change_sequence():
+
+    instrument = FakeInstrument(
+        connect_result=False
+    )
+
+    process = create_process(
+        batch=(
+            1,
+            "MDF260930212249",
+            "MODEL-A",
+            "2026-09-30 21:22:49",
+            25,
+            "ACTIVE"
+        ),
+        instrument=instrument
+    )
+
+    process.validate_operator()
+    process.load_active_batch()
+    process.wait_for_serial()
+
+    process.validate_serial(
+        "MDF2609302122490025"
+    )
+
+    process.start_test()
+
+    try:
+        process.run_test()
+        assert False
+    except RuntimeError as error:
+        assert str(error) == "Instrument gagal terhubung."
+
+    assert (
+        process.serial_manager.sequence_number
+        == 25
+    )
+
+    assert (
+        process.get_attempt_number()
+        == 1
+    )
+
+def test_run_test_read_error_does_not_change_sequence():
+
+    instrument = FakeInstrument(
+        fail_on_read=True
+    )
+
+    process = create_process(
+        batch=(
+            1,
+            "MDF260930212249",
+            "MODEL-A",
+            "2026-09-30 21:22:49",
+            25,
+            "ACTIVE"
+        ),
+        instrument=instrument
+    )
+
+    process.validate_operator()
+    process.load_active_batch()
+    process.wait_for_serial()
+
+    process.validate_serial(
+        "MDF2609302122490025"
+    )
+
+    process.start_test()
+
+    try:
+        process.run_test()
+        assert False
+    except RuntimeError as error:
+        assert str(error) == "Simulasi instrument error."
+
+    assert (
+        process.serial_manager.sequence_number
+        == 25
+    )
+
+    assert (
+        process.get_attempt_number()
+        == 1
+    )
+
+    assert instrument.disconnected is True
+
+def test_run_test_connection_failed_state():
+
+    instrument = FakeInstrument(
+        connect_result=False
+    )
+
+    process = create_process(
+        batch=(
+            1,
+            "MDF260930212249",
+            "MODEL-A",
+            "2026-09-30 21:22:49",
+            25,
+            "ACTIVE"
+        ),
+        instrument=instrument
+    )
+
+    process.validate_operator()
+    process.load_active_batch()
+    process.wait_for_serial()
+
+    process.validate_serial(
+        "MDF2609302122490025"
+    )
+
+    process.start_test()
+
+    try:
+        process.run_test()
+        assert False
+    except RuntimeError:
+        pass
+
+    assert process.get_state().value == "ERROR"
+
+def test_run_test_read_error_state():
+
+    instrument = FakeInstrument(
+        fail_on_read=True
+    )
+
+    process = create_process(
+        batch=(
+            1,
+            "MDF260930212249",
+            "MODEL-A",
+            "2026-09-30 21:22:49",
+            25,
+            "ACTIVE"
+        ),
+        instrument=instrument
+    )
+
+    process.validate_operator()
+    process.load_active_batch()
+    process.wait_for_serial()
+
+    process.validate_serial(
+        "MDF2609302122490025"
+    )
+
+    process.start_test()
+
+    try:
+        process.run_test()
+        assert False
+    except RuntimeError:
+        pass
+
+    assert process.get_state().value == "ERROR"
+
+def test_instrument_error_changes_state_to_error():
+
+    instrument = FakeInstrument(
+        connect_result=False
+    )
+
+    process = create_process(
+        batch=(
+            1,
+            "MDF260930212249",
+            "MODEL-A",
+            "2026-09-30 21:22:49",
+            25,
+            "ACTIVE"
+        ),
+        instrument=instrument
+    )
+
+    process.validate_operator()
+    process.load_active_batch()
+    process.wait_for_serial()
+
+    process.validate_serial(
+        "MDF2609302122490025"
+    )
+
+    process.start_test()
+
+    try:
+        process.run_test()
+        assert False
+    except RuntimeError:
+        pass
+
+    # Untuk behavior baru:
+    assert process.get_state().value == "ERROR"
+
+def test_handle_error_changes_state_to_error():
+
+    instrument = FakeInstrument(
+        connect_result=False
+    )
+
+    process = create_process(
+        batch=(
+            1,
+            "MDF260930212249",
+            "MODEL-A",
+            "2026-09-30 21:22:49",
+            25,
+            "ACTIVE"
+        ),
+        instrument=instrument
+    )
+
+    process.validate_operator()
+    process.load_active_batch()
+    process.wait_for_serial()
+
+    process.validate_serial(
+        "MDF2609302122490025"
+    )
+
+    process.start_test()
+
+    process.handle_error()
+
+    assert process.get_state().value == "ERROR"
+
+def test_error_can_recover_to_wait_serial():
+
+    instrument = FakeInstrument(
+        connect_result=False
+    )
+
+    process = create_process(
+        batch=(
+            1,
+            "MDF260930212249",
+            "MODEL-A",
+            "2026-09-30 21:22:49",
+            25,
+            "ACTIVE"
+        ),
+        instrument=instrument
+    )
+
+    process.validate_operator()
+    process.load_active_batch()
+    process.wait_for_serial()
+
+    process.validate_serial(
+        "MDF2609302122490025"
+    )
+
+    process.start_test()
+
+    process.handle_error()
+
+    # Behavior yang kita inginkan:
+    process.recover_from_error()
+
+    assert process.get_state().value == "WAIT_SERIAL"
+
+def test_recover_from_error_keeps_sequence_and_attempt():
+
+    instrument = FakeInstrument(
+        connect_result=False
+    )
+
+    process = create_process(
+        batch=(
+            1,
+            "MDF260930212249",
+            "MODEL-A",
+            "2026-09-30 21:22:49",
+            25,
+            "ACTIVE"
+        ),
+        instrument=instrument
+    )
+
+    process.validate_operator()
+    process.load_active_batch()
+    process.wait_for_serial()
+
+    process.validate_serial(
+        "MDF2609302122490025"
+    )
+
+    process.start_test()
+
+    assert process.get_attempt_number() == 1
+    assert process.serial_manager.sequence_number == 25
+
+    process.handle_error()
+
+    process.recover_from_error()
+
+    assert process.get_state().value == "WAIT_SERIAL"
+
+    assert process.get_attempt_number() == 1
+
+    assert process.serial_manager.sequence_number == 25

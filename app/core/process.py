@@ -83,6 +83,29 @@ class ProcessController:
             ProcessState.ERROR
         )
 
+    def recover_from_error(self):
+
+        if self.get_state() != ProcessState.ERROR:
+            raise ValueError(
+                "Recovery hanya dapat dilakukan dari state ERROR"
+            )
+
+        self.state_manager.set_state(
+            ProcessState.IDLE
+        )
+
+        self.state_manager.set_state(
+            ProcessState.OPERATOR_VALID
+        )
+
+        self.state_manager.set_state(
+            ProcessState.BATCH_READY
+        )
+
+        self.state_manager.set_state(
+            ProcessState.WAIT_SERIAL
+        )
+
 
     def get_attempt_number(self):
 
@@ -213,37 +236,43 @@ class ProcessController:
 
     def run_test(self):
 
-        connected = self.instrument.connect()
+        if not self.instrument.connect():
 
-        if not connected:
+            self.state_manager.set_state(
+                ProcessState.ERROR
+            )
 
             raise RuntimeError(
                 "Instrument gagal terhubung."
             )
 
-
         try:
 
-            voltage = (self.instrument.read_voltage())
-            current = (self.instrument.read_current())
+            voltage = self.instrument.read_voltage()
+            current = self.instrument.read_current()
 
-            result = self.judge_measurement(
+            judgment = self.judge_measurement(
                 voltage,
                 current
             )
 
-
             return {
                 "voltage": voltage,
                 "current": current,
-                "judgment": result
+                "judgment": judgment
             }
 
+        except Exception:
+
+            self.state_manager.set_state(
+                ProcessState.ERROR
+            )
+
+            raise
 
         finally:
 
             self.instrument.disconnect()
-
 
     def log_test_result(
         self,

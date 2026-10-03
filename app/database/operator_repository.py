@@ -81,6 +81,7 @@ class OperatorRepository:
         return cursor.fetchall()
 
     def delete_operator(self, operator_id):
+
         cursor = self.database.connection.cursor()
 
         cursor.execute(
@@ -90,3 +91,7 @@ class OperatorRepository:
             """,
             (operator_id,)
         )
+
+        self.database.connection.commit()
+
+        return cursor.rowcount > 0

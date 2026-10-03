@@ -119,3 +119,37 @@ class ModelRepository:
         self.database.connection.commit()
 
         return cursor.rowcount > 0
+
+    def update_model(
+        self,
+        model_name,
+        voltage_lower,
+        voltage_upper,
+        current_lower,
+        current_upper
+    ):
+
+        cursor = self.database.connection.cursor()
+
+        cursor.execute(
+            """
+            UPDATE models
+            SET
+                voltage_lower = ?,
+                voltage_upper = ?,
+                current_lower = ?,
+                current_upper = ?
+            WHERE model_name = ?
+            """,
+            (
+                voltage_lower,
+                voltage_upper,
+                current_lower,
+                current_upper,
+                model_name
+            )
+        )
+
+        self.database.connection.commit()
+
+        return cursor.rowcount > 0
