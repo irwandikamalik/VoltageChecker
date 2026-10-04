@@ -6,15 +6,10 @@ class GenericDMM(BaseDMM):
     def __init__(
         self,
         connection,
-        identify_command="*IDN?",
-        voltage_command="MEAS:VOLT?",
-        current_command="MEAS:CURR?"
+        command_config
     ):
         self.connection = connection
-
-        self.identify_command = identify_command
-        self.voltage_command = voltage_command
-        self.current_command = current_command
+        self.command_config = command_config
 
     def connect(self):
         return self.connection.connect()
@@ -25,7 +20,7 @@ class GenericDMM(BaseDMM):
     def identify(self):
 
         response = self.connection.query(
-            self.identify_command
+            self.command_config.identify_command
         )
 
         return response.strip()
@@ -33,7 +28,7 @@ class GenericDMM(BaseDMM):
     def read_voltage(self):
 
         response = self.connection.query(
-            self.voltage_command
+            self.command_config.voltage_command
         )
 
         return float(response)
@@ -41,7 +36,7 @@ class GenericDMM(BaseDMM):
     def read_current(self):
 
         response = self.connection.query(
-            self.current_command
+            self.command_config.current_command
         )
 
         return float(response)

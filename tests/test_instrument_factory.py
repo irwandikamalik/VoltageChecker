@@ -10,6 +10,9 @@ from app.instrument.dmm.generic_dmm import (
     GenericDMM
 )
 
+from app.instrument.config.dmm_command_config import (
+    DMMCommandConfig
+)
 
 def test_create_dmm():
 
@@ -18,8 +21,11 @@ def test_create_dmm():
         resource_name="GPIB0::22::INSTR"
     )
 
+    command_config = DMMCommandConfig()
+
     dmm = InstrumentFactory.create_dmm(
-        config
+        connection_config=config,
+        command_config=command_config
     )
 
     assert isinstance(
@@ -39,8 +45,11 @@ def test_create_serial_dmm():
         resource_name="ASRL3::INSTR"
     )
 
+    command_config = DMMCommandConfig()
+
     dmm = InstrumentFactory.create_dmm(
-        config
+        connection_config=config,
+        command_config=command_config
     )
 
     assert isinstance(
@@ -62,8 +71,11 @@ def test_create_tcpip_dmm():
         )
     )
 
+    command_config = DMMCommandConfig()
+
     dmm = InstrumentFactory.create_dmm(
-        config
+        connection_config=config,
+        command_config=command_config
     )
 
     assert isinstance(
@@ -83,10 +95,68 @@ def test_invalid_config():
         resource_name="TEST"
     )
 
+    command_config = DMMCommandConfig()
+
     try:
-        InstrumentFactory.create_dmm(config)
+
+        InstrumentFactory.create_dmm(
+            connection_config=config,
+            command_config=command_config
+        )
+
         assert False
+
     except ValueError as error:
+
         assert str(error) == (
-            "Konfigurasi DMM tidak valid."
+            "Konfigurasi koneksi DMM tidak valid."
+        )
+
+def test_custom_command_config():
+
+    connection_config = DMMConnectionConfig(
+        communication_type="GPIB",
+        resource_name="GPIB0::22::INSTR"
+    )
+
+    command_config = DMMCommandConfig(
+        identify_command="CUSTOM:IDN?",
+        voltage_command="CUSTOM:VOLT?",
+        current_command="CUSTOM:CURR?"
+    )
+
+    dmm = InstrumentFactory.create_dmm(
+        connection_config=connection_config,
+        command_config=command_config
+    )
+
+    assert (
+        dmm.command_config
+        is command_config
+    )
+
+def test_invalid_command_config():
+
+    connection_config = DMMConnectionConfig(
+        communication_type="GPIB",
+        resource_name="GPIB0::22::INSTR"
+    )
+
+    command_config = DMMCommandConfig(
+        voltage_command=""
+    )
+
+    try:
+
+        InstrumentFactory.create_dmm(
+            connection_config=connection_config,
+            command_config=command_config
+        )
+
+        assert False
+
+    except ValueError as error:
+
+        assert str(error) == (
+            "Konfigurasi command DMM tidak valid."
         )

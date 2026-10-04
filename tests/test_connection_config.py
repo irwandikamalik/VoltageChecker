@@ -69,3 +69,32 @@ def test_invalid_timeout():
     )
 
     assert config.is_valid() is False
+
+def test_serial_resource_is_valid():
+
+    config = DMMConnectionConfig(
+        communication_type="SERIAL",
+        resource_name="COM3"
+    )
+
+    assert config.is_valid() is True
+
+
+def test_gpib_resource_is_valid():
+
+    config = DMMConnectionConfig(
+        communication_type="GPIB",
+        resource_name="GPIB0::22::INSTR"
+    )
+
+    assert config.is_valid() is True
+
+
+def test_tcpip_resource_is_valid():
+
+    config = DMMConnectionConfig(
+        communication_type="TCPIP",
+        resource_name="TCPIP0::192.168.1.100::INSTR"
+    )
+
+    assert config.is_valid() is True
